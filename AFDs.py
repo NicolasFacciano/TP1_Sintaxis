@@ -2,6 +2,12 @@ ESTADO_FINAL = "ESTADO FINAL"
 ESTADO_NO_FINAL = "NO ACEPTADO"
 ESTADO_TRAMPA = "EN ESTADO TRAMPA"
 
+# SUG: Considerar filtrar o ignorar tokens WHITESPACE si no son necesarios para simplificar flujo.
+# SUG: Cachear len(codigo_fuente) y evitar recalcular en cada iteración del lexer.
+# SUG: Podríamos usar un trie o expresiones regulares precompiladas para optimizar la búsqueda de tokens.
+# SUG: Renombrar variables (start, end) para mejorar claridad del control de posición.
+# SUG: Romper la construcción de resultados al primer ESTADO_TRAMPA completo para ahorrar ciclos.
+
 # Definiciones de autómatas para cada token
 # Autómata para espacios en blanco (incluye espacios, tabulaciones y saltos de línea)
 def automata_whitespace(lexema):
@@ -92,48 +98,46 @@ TOKENS_POSIBLES = [
 ]
 
 # Lexer principal con corrección de gestión de posibles tokens
-
 def lexer(codigo_fuente):
     tokens = []
-    posicion_actual = 0
-    longitud = len(codigo_fuente)
+    posicion = 0
+    total_len = len(codigo_fuente)
 
-    while posicion_actual < longitud:
-        comienzo = posicion_actual
+    while posicion < total_len:
+        start = posicion
         best_lexema = ''
         best_tokens = []
-        siguiente = comienzo
+        end = start
 
-        # Intentar consumir la máxima longitud posible
-        while siguiente < longitud:
-            lexema = codigo_fuente[comienzo:siguiente+1]
-            resultados = [(tname, afd(lexema)) for tname, afd in TOKENS_POSIBLES]
-            # Hay al menos un autómata no en estado trampa
-            if any(res != ESTADO_TRAMPA for _, res in resultados):
-                # Tomar sólo aquellos en estado final
-                finales = [tname for tname, res in resultados if res == ESTADO_FINAL]
-                if finales:
-                    best_tokens = finales
+        # Consumir la longitud máxima posible
+        while end < total_len:
+            lexema = codigo_fuente[start:end+1]
+            # SUG: Romper al primer estado trampa completo en vez de recolectar todos
+            results = [(name, afd(lexema)) for name, afd in TOKENS_POSIBLES]
+            if any(res != ESTADO_TRAMPA for _, res in results):
+                finals = [name for name, res in results if res == ESTADO_FINAL]
+                if finals:
+                    best_tokens = finals
                     best_lexema = lexema
-                siguiente += 1
+                end += 1
             else:
                 break
 
         if not best_tokens:
-            desconocido = codigo_fuente[comienzo:siguiente]
-            raise Exception(f"ERROR LÉXICO: '{desconocido}' no reconocido")
+            bad = codigo_fuente[start:end]
+            raise Exception(f"ERROR LÉXICO: '{bad}' no reconocido")
 
         token_type = best_tokens[0]
-        # Reasignar keywords
         if token_type == "ID":
             token_type = KEYWORDS.get(best_lexema, "ID")
 
         tokens.append((token_type, best_lexema))
-        posicion_actual = comienzo + len(best_lexema)
+        posicion = start + len(best_lexema)
 
     return tokens
 
-# Ejemplos de pruebas adicionales
+# Ejemplos de pruebas adicionales def run_tests():
+
 def run_tests():
     ejemplos = [
         "   \t\n",               # whitespace puro
