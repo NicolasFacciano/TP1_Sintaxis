@@ -1,39 +1,19 @@
-ESTADO_FINAL = "ESTADO FINAL"
-ESTADO_NO_FINAL = "NO ACEPTADO"
-ESTADO_TRAMPA = "EN ESTADO TRAMPA"
+# Código completo con tests y ejemplo de ejecución
 
-# SUG: Considerar filtrar o ignorar tokens WHITESPACE si no son necesarios para simplificar flujo.
-# SUG: Cachear len(codigo_fuente) y evitar recalcular en cada iteración del lexer.
-# SUG: Podríamos usar un trie o expresiones regulares precompiladas para optimizar la búsqueda de tokens.
-# SUG: Renombrar variables (start, end) para mejorar claridad del control de posición.
-# SUG: Romper la construcción de resultados al primer ESTADO_TRAMPA completo para ahorrar ciclos.
+ESTADO_FINAL = "ESTADO_FINAL"
+ESTADO_TRAMPA = "ESTADO_TRAMPA"
 
-# Definiciones de autómatas para cada token
-# Autómata para espacios en blanco (incluye espacios, tabulaciones y saltos de línea)
-def automata_whitespace(lexema):
-    estado = 0
-    for c in lexema:
-        if estado == 0 and c in (' ', '\n', '\t'):
-            estado = 1
-        elif estado == 1 and c in (' ', '\n', '\t'):
-            estado = 1
-        else:
-            return ESTADO_TRAMPA
-    return ESTADO_FINAL
-
-# Autómata para identificadores (ID) con soporte de guión bajo
 def automata_id(lexema):
     estado = 0
     for c in lexema:
-        if estado == 0 and (c.isalpha() or c == '_'):
+        if estado == 0 and (c.isalpha() or c == "_"):
             estado = 1
-        elif estado == 1 and (c.isalnum() or c == '_'):
+        elif estado == 1 and (c.isalnum() or c == "_"):
             estado = 1
         else:
             return ESTADO_TRAMPA
-    return ESTADO_FINAL if estado == 1 else ESTADO_NO_FINAL
+    return ESTADO_FINAL if estado == 1 else ESTADO_TRAMPA
 
-# Autómata para números (NUM)
 def automata_num(lexema):
     estado = 0
     for c in lexema:
@@ -43,116 +23,141 @@ def automata_num(lexema):
             estado = 1
         else:
             return ESTADO_TRAMPA
-    return ESTADO_FINAL if estado == 1 else ESTADO_NO_FINAL
+    return ESTADO_FINAL if estado == 1 else ESTADO_TRAMPA
 
-# Autómatas para operadores compuestos
-def automata_assign(lexema): return ESTADO_FINAL if lexema == ":=" else ESTADO_TRAMPA
-def automata_eq(lexema):     return ESTADO_FINAL if lexema == "==" else ESTADO_TRAMPA
-def automata_neq(lexema):    return ESTADO_FINAL if lexema == "<>" else ESTADO_TRAMPA
-def automata_le(lexema):     return ESTADO_FINAL if lexema == "<=" else ESTADO_TRAMPA
-def automata_ge(lexema):     return ESTADO_FINAL if lexema == ">=" else ESTADO_TRAMPA
+def automata_program(lexema): return ESTADO_FINAL if lexema == "program" else ESTADO_TRAMPA
+def automata_var(lexema):     return ESTADO_FINAL if lexema == "var"     else ESTADO_TRAMPA
+def automata_int(lexema):     return ESTADO_FINAL if lexema == "int"     else ESTADO_TRAMPA
+def automata_bool(lexema):    return ESTADO_FINAL if lexema == "bool"    else ESTADO_TRAMPA
+def automata_true(lexema):    return ESTADO_FINAL if lexema == "true"    else ESTADO_TRAMPA
+def automata_false(lexema):   return ESTADO_FINAL if lexema == "false"   else ESTADO_TRAMPA
+def automata_begin(lexema):   return ESTADO_FINAL if lexema == "begin"   else ESTADO_TRAMPA
+def automata_end(lexema):     return ESTADO_FINAL if lexema == "end"     else ESTADO_TRAMPA
+def automata_if(lexema):      return ESTADO_FINAL if lexema == "if"      else ESTADO_TRAMPA
+def automata_else(lexema):    return ESTADO_FINAL if lexema == "else"    else ESTADO_TRAMPA
+def automata_goto(lexema):    return ESTADO_FINAL if lexema == "goto"    else ESTADO_TRAMPA
+def automata_let(lexema):     return ESTADO_FINAL if lexema == "let"     else ESTADO_TRAMPA
+def automata_not(lexema):     return ESTADO_FINAL if lexema == "not"     else ESTADO_TRAMPA
+def automata_and(lexema):     return ESTADO_FINAL if lexema == "and"     else ESTADO_TRAMPA
+def automata_or(lexema):      return ESTADO_FINAL if lexema == "or"      else ESTADO_TRAMPA
 
-# Autómatas para operadores simples y símbolos
-def automata_plus(lexema):     return ESTADO_FINAL if lexema == "+" else ESTADO_TRAMPA
-def automata_minus(lexema):    return ESTADO_FINAL if lexema == "-" else ESTADO_TRAMPA
-def automata_mult(lexema):     return ESTADO_FINAL if lexema == "*" else ESTADO_TRAMPA
-def automata_colon(lexema):    return ESTADO_FINAL if lexema == ":" else ESTADO_TRAMPA
-def automata_semicolon(lexema):return ESTADO_FINAL if lexema == ";" else ESTADO_TRAMPA
-def automata_dot(lexema):      return ESTADO_FINAL if lexema == "." else ESTADO_TRAMPA
-def automata_equal(lexema):    return ESTADO_FINAL if lexema == "=" else ESTADO_TRAMPA
-def automata_lt(lexema):       return ESTADO_FINAL if lexema == "<" else ESTADO_TRAMPA
-def automata_gt(lexema):       return ESTADO_FINAL if lexema == ">" else ESTADO_TRAMPA
-def automata_lparen(lexema):   return ESTADO_FINAL if lexema == "(" else ESTADO_TRAMPA
-def automata_rparen(lexema):   return ESTADO_FINAL if lexema == ")" else ESTADO_TRAMPA
+def automata_assign(lexema):  return ESTADO_FINAL if lexema == ":=" else ESTADO_TRAMPA
+def automata_eq(lexema):      return ESTADO_FINAL if lexema == "==" else ESTADO_TRAMPA
+def automata_neq(lexema):     return ESTADO_FINAL if lexema == "<>" else ESTADO_TRAMPA
+def automata_le(lexema):      return ESTADO_FINAL if lexema == "<=" else ESTADO_TRAMPA
+def automata_ge(lexema):      return ESTADO_FINAL if lexema == ">=" else ESTADO_TRAMPA
 
-# Mapeo de palabras clave para reclasificar IDs
-KEYWORDS = {
-    "program": "PROGRAM", "var": "VAR",   "int": "INT",
-    "bool": "BOOL",     "true": "TRUE", "false": "FALSE",
-    "begin": "BEGIN",   "end": "END",   "if": "IF",
-    "else": "ELSE",     "goto": "GOTO", "let": "LET",
-    "not": "NOT",       "and": "AND",   "or": "OR"
-}
+def automata_plus(lexema):    return ESTADO_FINAL if lexema == "+"   else ESTADO_TRAMPA
+def automata_minus(lexema):   return ESTADO_FINAL if lexema == "-"   else ESTADO_TRAMPA
+def automata_mult(lexema):    return ESTADO_FINAL if lexema == "*"   else ESTADO_TRAMPA
+def automata_colon(lexema):   return ESTADO_FINAL if lexema == ":"   else ESTADO_TRAMPA
+def automata_semicolon(lexema):return ESTADO_FINAL if lexema == ";"   else ESTADO_TRAMPA
+def automata_dot(lexema):     return ESTADO_FINAL if lexema == "."   else ESTADO_TRAMPA
+def automata_equal(lexema):   return ESTADO_FINAL if lexema == "="   else ESTADO_TRAMPA
+def automata_lt(lexema):      return ESTADO_FINAL if lexema == "<"   else ESTADO_TRAMPA
+def automata_gt(lexema):      return ESTADO_FINAL if lexema == ">"   else ESTADO_TRAMPA
+def automata_lparen(lexema):  return ESTADO_FINAL if lexema == "("   else ESTADO_TRAMPA
+def automata_rparen(lexema):  return ESTADO_FINAL if lexema == ")"   else ESTADO_TRAMPA
 
-# Lista de tokens con sus autómatas (ordenados por precedencia)
 TOKENS_POSIBLES = [
-    ("WHITESPACE", automata_whitespace),
-    ("ASSIGN",     automata_assign),
-    ("EQ",         automata_eq),
-    ("NEQ",        automata_neq),
-    ("LE",         automata_le),
-    ("GE",         automata_ge),
-    ("PLUS",       automata_plus),
-    ("MINUS",      automata_minus),
-    ("MULT",       automata_mult),
-    ("COLON",      automata_colon),
-    ("SEMICOLON",  automata_semicolon),
-    ("DOT",        automata_dot),
-    ("EQUAL",      automata_equal),
-    ("LT",         automata_lt),
-    ("GT",         automata_gt),
-    ("LPAREN",     automata_lparen),
-    ("RPAREN",     automata_rparen),
-    ("NUM",        automata_num),
-    ("ID",         automata_id),
+    ("PROGRAM", automata_program),
+    ("VAR",     automata_var),
+    ("INT",     automata_int),
+    ("BOOL",    automata_bool),
+    ("TRUE",    automata_true),
+    ("FALSE",   automata_false),
+    ("BEGIN",   automata_begin),
+    ("END",     automata_end),
+    ("IF",      automata_if),
+    ("ELSE",    automata_else),
+    ("GOTO",    automata_goto),
+    ("LET",     automata_let),
+    ("NOT",     automata_not),
+    ("AND",     automata_and),
+    ("OR",      automata_or),
+    ("ASSIGN",  automata_assign),
+    ("EQ",      automata_eq),
+    ("NEQ",     automata_neq),
+    ("LE",      automata_le),
+    ("GE",      automata_ge),
+    ("PLUS",    automata_plus),
+    ("MINUS",   automata_minus),
+    ("MULT",    automata_mult),
+    ("LPAREN",  automata_lparen),
+    ("RPAREN",  automata_rparen),
+    ("SEMICOLON",automata_semicolon),
+    ("DOT",     automata_dot),
+    ("COLON",   automata_colon),
+    ("EQUAL",   automata_equal),
+    ("LT",      automata_lt),
+    ("GT",      automata_gt),
+    ("ID",      automata_id),
+    ("NUM",     automata_num),
 ]
 
-# Lexer principal con corrección de gestión de posibles tokens
 def lexer(codigo_fuente):
     tokens = []
-    posicion = 0
-    total_len = len(codigo_fuente)
-
-    while posicion < total_len:
-        start = posicion
-        best_lexema = ''
-        best_tokens = []
-        end = start
-
-        # Consumir la longitud máxima posible
-        while end < total_len:
-            lexema = codigo_fuente[start:end+1]
-            # SUG: Romper al primer estado trampa completo en vez de recolectar todos
-            results = [(name, afd(lexema)) for name, afd in TOKENS_POSIBLES]
-            if any(res != ESTADO_TRAMPA for _, res in results):
-                finals = [name for name, res in results if res == ESTADO_FINAL]
-                if finals:
-                    best_tokens = finals
-                    best_lexema = lexema
-                end += 1
-            else:
-                break
-
-        if not best_tokens:
-            bad = codigo_fuente[start:end]
-            raise Exception(f"ERROR LÉXICO: '{bad}' no reconocido")
-
-        token_type = best_tokens[0]
-        if token_type == "ID":
-            token_type = KEYWORDS.get(best_lexema, "ID")
-
-        tokens.append((token_type, best_lexema))
-        posicion = start + len(best_lexema)
-
+    i, n = 0, len(codigo_fuente)
+    while i < n:
+        if codigo_fuente[i].isspace():
+            i += 1; continue
+        start, last = i, None
+        j = i
+        while j < n:
+            lexema = codigo_fuente[start:j+1]
+            any_non_trap = False; matches = []
+            for idx, (tok, afd) in enumerate(TOKENS_POSIBLES):
+                res = afd(lexema)
+                if res != ESTADO_TRAMPA:
+                    any_non_trap = True
+                    if res == ESTADO_FINAL:
+                        matches.append((idx, tok))
+            if not any_non_trap: break
+            if matches:
+                idx_min, tok_sel = min(matches, key=lambda x: x[0])
+                last = (tok_sel, lexema, j+1-start)
+            j += 1
+        if last is None:
+            raise Exception(f"ERROR LÉXICO: '{codigo_fuente[start]}' no reconocido")
+        token, lexeme, length = last
+        tokens.append((token, lexeme))
+        i += length
     return tokens
 
-# Ejemplos de pruebas adicionales def run_tests():
-
+# ==== Función de tests ====
 def run_tests():
-    ejemplos = [
-        "   \t\n",               # whitespace puro
-        "123 456",                # números
-        "foo bar1 _baz qux_123",  # identificadores con underscore
-        ":= == <> <= >= + - * /", # el '/' debe fallar
-        "program x := 42 ; if x == 42 goto L1 ; end"
+    casos = [
+        ("program p1 .",                  [("PROGRAM","program"),("ID","p1"),("DOT",".")]),
+        ("program myProg . begin end",    [("PROGRAM","program"),("ID","myProg"),
+                                          ("DOT","."),("BEGIN","begin"),("END","end")]),
+        ("var _x1 ;",                     [("VAR","var"),("ID","_x1"),("SEMICOLON",";")]),
+        ("let x := 100 + 20 ;",          [("LET","let"),("ID","x"),("ASSIGN",":="),
+                                          ("NUM","100"),("PLUS","+"),("NUM","20"),
+                                          ("SEMICOLON",";")]),
+        ("let flag = true and false ;",  [("LET","let"),("ID","flag"),("EQUAL","="),
+                                          ("TRUE","true"),("AND","and"),("FALSE","false"),
+                                          ("SEMICOLON",";")]),
+        ("if x>=10 goto L1 ;",           [("IF","if"),("ID","x"),("GE",">="),
+                                          ("NUM","10"),("GOTO","goto"),("ID","L1"),
+                                          ("SEMICOLON",";")]),
+        ("x<>y",                          [("ID","x"),("NEQ","<>"),("ID","y")]),
+        ("x<=y",                          [("ID","x"),("LE","<="),("ID","y")]),
+        ("(a)",                           [("LPAREN","("),("ID","a"),("RPAREN",")")]),
+        ("1a",                            [("NUM","1"),("ID","a")]),
+        ("123",                           [("NUM","123")]),
+        ("12a",                           [("NUM","12"),("ID","a")]),
+        ("$",                             Exception),
+        ("#",                             Exception),
     ]
-    for codigo in ejemplos:
-        print(f"\nEntrada: {repr(codigo)}")
+    for codigo, esperado in casos:
         try:
-            for tk in lexer(codigo):
-                print("  ", tk)
+            salida = lexer(codigo)
+            assert salida == esperado, f"FALLÓ: {codigo} -> {salida}, esperado {esperado}"
         except Exception as e:
-            print("  ", e)
+            assert esperado is Exception, f"FALLÓ EXCEPCIÓN: {codigo} -> {e}"
+    print("Todas las pruebas pasaron.")
 
+# ==== Ejecutar tests y ejemplo ====
 if __name__ == "__main__":
     run_tests()
+    print("Ejemplo:", lexer("bool flag = true ;"))
