@@ -2,6 +2,9 @@ ESTADO_FINAL = "ESTADO FINAL"
 ESTADO_NO_FINAL = "NO ACEPTADO"
 ESTADO_TRAMPA = "EN ESTADO TRAMPA"
 
+# --- Autómatas ya existentes (no los repito para abreviar) ---
+# ... (los automatas program, var, int, bool, true, false, begin, end, if, else, not, goto, let, num, id, espacio) ...
+
 # Automata para "program"
 def automata_program(lexema):
     estado = 0
@@ -327,7 +330,6 @@ def automata_id(lexema):
         return ESTADO_FINAL
     return ESTADO_NO_FINAL
 
-
 # Automata para espacios, tab y salto de línea (para ignorar)
 def automata_espacio(lexema):
     estados_finales = [1]
@@ -347,6 +349,157 @@ def automata_espacio(lexema):
     return ESTADO_NO_FINAL
 
 
+# ---------- NUEVOS AUTÓMATAS ----------
+
+# Automata para operadores de comparación (CompOp)
+def automata_compop(lexema):
+    estado = 0
+    estados_finales = [2,3]
+    for c in lexema:
+        if estado == 0:
+            if c == '=':
+                estado = 1
+            elif c == '<':
+                estado = 2
+            elif c == '>':
+                estado = 3
+            else:
+                estado = -1
+                break
+        elif estado == 1:
+            # solo puede ser ==
+            if c == '=':
+                estado = 2
+            else:
+                estado = -1
+                break
+        elif estado == 2:
+            # después de < puede venir > o =
+            if c == '>':
+                estado = 3  # para <>
+            elif c == '=':
+                estado = 4  # para <=
+            else:
+                estado = -1
+                break
+        elif estado == 3:
+            # después de > puede venir =
+            if c == '=':
+                estado = 4  # para >=
+            else:
+                estado = -1
+                break
+        else:
+            estado = -1
+            break
+
+    # Estados finales válidos para los distintos tokens:
+    # 1 carácter: < (estado 2), > (estado 3), = (estado 1)
+    # 2 caracteres: == (estado 2), <> (estado 3), <= (estado 4), >= (estado 4)
+    if estado == -1:
+        return ESTADO_TRAMPA
+    if estado in [1,2,3,4]:
+        return ESTADO_FINAL
+    return ESTADO_NO_FINAL
+
+# Nota: el anterior quedó algo complejo y confuso. Mejor lo rehago para que cubra bien todos casos:
+
+def automata_compop(lexema):
+    estado = 0
+    estados_finales = [1,2]
+    for c in lexema:
+        if estado == 0:
+            if c == '=':
+                estado = 1
+            elif c == '<':
+                estado = 2
+            elif c == '>':
+                estado = 2
+            else:
+                estado = -1
+                break
+        elif estado == 1:
+            if c == '=':
+                estado = 2  # == token
+            else:
+                estado = -1
+                break
+        elif estado == 2:
+            if lexema[0] == '<':
+                if c == '>' or c == '=':
+                    estado = 1  # <>, <= token
+                else:
+                    estado = -1
+                    break
+            elif lexema[0] == '>':
+                if c == '=':
+                    estado = 1  # >= token
+                else:
+                    estado = -1
+                    break
+            else:
+                estado = -1
+                break
+        else:
+            estado = -1
+            break
+
+    # Estados finales son 1 o 2 según la longitud y el token válido
+    if estado == -1:
+        return ESTADO_TRAMPA
+    # Para 1 caracter: <, >, =
+    # Para 2 caracteres: ==, <>, <=, >=
+    if len(lexema) == 1 and lexema in ['<', '>', '=']:
+        return ESTADO_FINAL
+    elif len(lexema) == 2 and lexema in ['==', '<>', '<=', '>=']:
+        return ESTADO_FINAL
+    else:
+        return ESTADO_NO_FINAL
+
+
+# Automata para puntuacion: . , ; ( ) ...
+def automata_puntuacion(lexema):
+    if lexema == '.' or lexema == ',' or lexema == ';' or lexema == '(' or lexema == ')':
+        return ESTADO_FINAL
+    if lexema == '...':
+        return ESTADO_FINAL
+    if lexema.startswith('.') and len(lexema) < 3:
+        # para evitar reconocer .. o ... incorrecto
+        return ESTADO_NO_FINAL
+    return ESTADO_TRAMPA
+
+
+# Automata para asignación: : | := | =
+def automata_asignacion(lexema):
+    estado = 0
+    estados_finales = [1, 2, 3]
+    for c in lexema:
+        if estado == 0:
+            if c == ':':
+                estado = 1
+            elif c == '=':
+                estado = 3
+            else:
+                estado = -1
+                break
+        elif estado == 1:
+            if c == '=':
+                estado = 2
+            else:
+                estado = -1
+                break
+        else:
+            estado = -1
+            break
+
+    if estado == -1:
+        return ESTADO_TRAMPA
+    if estado in estados_finales:
+        return ESTADO_FINAL
+    return ESTADO_NO_FINAL
+
+
+# --- Lista actualizada de tokens posibles ---
 TOKENS_POSIBLES = [
     ("ESPACIO", automata_espacio),
     ("program", automata_program),
@@ -362,9 +515,13 @@ TOKENS_POSIBLES = [
     ("not", automata_not),
     ("goto", automata_goto),
     ("let", automata_let),
+    ("CompOp", automata_compop),      # operadores de comparación
+    ("Asignacion", automata_asignacion),  # : | := | =
+    ("Puntuacion", automata_puntuacion),  # . , ; ( ) ...
     ("num", automata_num),
     ("id", automata_id),
 ]
+
 
 def lexer(codigo_fuente):
     tokens = []
@@ -385,25 +542,20 @@ def lexer(codigo_fuente):
             for (un_tipo_de_token, afd) in TOKENS_POSIBLES:
                 simulacion_afd = afd(lexema)
                 if simulacion_afd == ESTADO_FINAL:
-                    posibles_tokens_con_un_caracter_mas.append(un_tipo_de_token)
+                    posibles_tokens_con_un_caracter_mas.append((un_tipo_de_token, lexema))
                     var_aux_todos_en_estado_trampa = False
                 elif simulacion_afd == ESTADO_NO_FINAL:
                     var_aux_todos_en_estado_trampa = False
 
-            if not var_aux_todos_en_estado_trampa:
-                posicion_actual += 1
+            posicion_actual += 1
 
         if len(posibles_tokens) == 0:
-            raise Exception("ERROR:TOKEN DESCONOCIDO '" + lexema + "'")
-
-        un_tipo_de_token = posibles_tokens[0]
-
-        if un_tipo_de_token != "ESPACIO":
-            tokens.append((un_tipo_de_token, lexema))
+            print(f"Error léxico: símbolo inesperado {codigo_fuente[comienzo_lexema]}")
+            posicion_actual = comienzo_lexema + 1
+        else:
+            tipo_token, lexema_token = posibles_tokens[-1]
+            if tipo_token != "ESPACIO":  # Ignorar espacios
+                tokens.append((tipo_token, lexema_token))
+            posicion_actual = comienzo_lexema + len(lexema_token)
 
     return tokens
-
-
-# Prueba:
-codigo_prueba = "program var x1 123 if else true false begin end not goto let int bool"
-print(lexer(codigo_prueba))
